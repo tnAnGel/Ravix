@@ -1,0 +1,35 @@
+# ---- Frontend ----
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+
+# tsc output for the Vite config — the .ts file is the source of truth.
+vite.config.js
+vite.config.d.ts
+
+# ---- Release artifacts ----
+# Built tarballs are published as GitHub Release assets by CI, never committed.
+release/
+out/
+
+# ---- Backend (Java / Maven / Quarkus) ----
+backend/target/
+backend/.quarkus/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ---- Editor / tooling ----
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.iml
+*.tsbuildinfo
+.claude/
+
+# ---- Logs ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

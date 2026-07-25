@@ -1,0 +1,144 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme (scaffolded, dark is the product default) */
+    --background: 220 24% 97%;
+    --foreground: 222 32% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 12%;
+
+    --primary: 245 72% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 92%;
+    --secondary-foreground: 222 32% 16%;
+
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 10% 42%;
+
+    --accent: 245 60% 95%;
+    --accent-foreground: 245 72% 40%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 58% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 48%;
+    --warning-foreground: 38 90% 12%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 16% 86%;
+    --input: 220 16% 86%;
+    --ring: 245 72% 58%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Ravix default — graphite / near-black navy, electric indigo accent */
+    --background: 224 32% 6%;
+    --foreground: 213 24% 92%;
+
+    --card: 223 28% 9%;
+    --card-foreground: 213 24% 92%;
+
+    --popover: 223 30% 8%;
+    --popover-foreground: 213 24% 92%;
+
+    --primary: 244 84% 67%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 22% 15%;
+    --secondary-foreground: 213 20% 88%;
+
+    --muted: 222 20% 14%;
+    --muted-foreground: 217 13% 60%;
+
+    --accent: 245 40% 18%;
+    --accent-foreground: 244 90% 86%;
+
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 56% 46%;
+    --success-foreground: 150 60% 8%;
+    --warning: 38 94% 56%;
+    --warning-foreground: 38 90% 10%;
+    --info: 196 90% 56%;
+    --info-foreground: 200 80% 8%;
+
+    --border: 220 18% 17%;
+    --input: 220 16% 20%;
+    --ring: 244 84% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* App background: subtle radial depth, no decorative noise */
+  .dark body {
+    background-image:
+      radial-gradient(900px circle at 8% -10%, hsl(245 70% 30% / 0.14), transparent 45%),
+      radial-gradient(1100px circle at 100% 0%, hsl(196 80% 40% / 0.08), transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Premium hairline panel surface */
+  .surface-panel {
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--card) / 0.9),
+      hsl(var(--card) / 0.7)
+    );
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* contenteditable placeholder for the webmail rich-text composer */
+.rte-editor:empty::before {
+  content: attr(data-ph);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}

@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a capability for Ravix
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ravix has a deliberate scope — please skim the
+        [non-goals](https://github.com/tnAnGel/Ravix/blob/main/CONTRIBUTING.md#non-goals)
+        before filing.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you actually trying to do, and where does Ravix get in the way?
+      placeholder: "I run 40 domains and rechecking DNS one at a time takes all morning."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Ravix do instead? Where in the panel would it live?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including any workaround you use today.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a pull request for this.

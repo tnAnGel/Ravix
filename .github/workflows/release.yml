@@ -1,0 +1,94 @@
+name: Release
+
+# Build Ravix once in CI and publish pre-built artifacts so installs take
+# ~30-60s instead of compiling Quarkus + bundling the frontend on every server.
+#
+# Trigger: push a tag like v0.1.0  (git tag v0.1.0 && git push origin v0.1.0)
+# Produces a GitHub release with:
+#   - ravix-backend-jvm.tar.gz   (the Quarkus quarkus-app/ runtime)
+#   - ravix-frontend.tar.gz      (the built Vite dist/)
+#   - install.sh                 (the fast installer, for convenience)
+#   - SHA256SUMS                 (verified by install.sh before it deploys)
+#
+# The asset names are stable and must stay in sync with BACKEND_ASSET /
+# FRONTEND_ASSET / CHECKSUM_ASSET in install.sh.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build backend (Quarkus JVM)
+        run: |
+          cd backend
+          mvn -B -q -DskipTests package -Dnet.bytebuddy.experimental=true
+          test -f target/quarkus-app/quarkus-run.jar
+
+      - name: Build frontend (Vite)
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          test -f dist/index.html
+
+      - name: Package artifacts
+        run: |
+          mkdir -p out
+          tar -C backend/target -czf out/ravix-backend-jvm.tar.gz quarkus-app
+          tar -C dist -czf out/ravix-frontend.tar.gz .
+          cp install.sh out/install.sh
+          cd out && sha256sum ravix-backend-jvm.tar.gz ravix-frontend.tar.gz install.sh > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          NOTES=$(cat <<EOF
+          Automated release.
+
+          Install or upgrade:
+
+          \`\`\`bash
+          curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | sudo bash
+          \`\`\`
+
+          Artifacts are verified against \`SHA256SUMS\` by the installer.
+          EOF
+          )
+          # Create the release if it does not exist yet, then upload (clobbering
+          # on re-run so a re-tagged build replaces stale assets).
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "Ravix $TAG" --notes "$NOTES"
+          gh release upload "$TAG" \
+            out/ravix-backend-jvm.tar.gz \
+            out/ravix-frontend.tar.gz \
+            out/install.sh \
+            out/SHA256SUMS \
+            --clobber
+          echo "Release $TAG published with 4 assets."

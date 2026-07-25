@@ -1,0 +1,113 @@
+Ravix — self-hosted mail infrastructure control panel
+Copyright (C) 2025-2026 Maxim Belyakov
+
+================================================================================
+1. AUTHORSHIP
+================================================================================
+
+Ravix was designed and written by Maxim Belyakov, who is the sole author and
+copyright holder of the original work.
+
+    Author    Maxim Belyakov
+    GitHub    https://github.com/tnAnGel
+    Telegram  https://t.me/Namnes  (@Namnes)
+    Email     darkzeit00@gmail.com
+
+Contributions from other people, where accepted, remain the copyright of their
+respective authors and are licensed under the AGPL-3.0 (see CONTRIBUTING.md).
+No copyright assignment is required or requested.
+
+================================================================================
+2. LICENSE
+================================================================================
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3, as published by
+the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+The full license text is in the file LICENSE, and at
+<https://www.gnu.org/licenses/agpl-3.0.html>.
+
+SPDX-License-Identifier: AGPL-3.0-only
+
+What this means in practice:
+
+  - You MAY run Ravix for any purpose, including commercially.
+  - You MAY study, modify and redistribute it.
+  - If you distribute a modified version, it must be under the AGPL-3.0 and you
+    must make your source available.
+  - If you run a modified version and let OTHER PEOPLE use it OVER A NETWORK,
+    section 13 of the AGPL requires you to offer those users the complete
+    corresponding source of your modified version. Running it privately for
+    yourself or your own organization does not trigger this.
+  - You MAY NOT relicense Ravix, or a derivative of it, under different terms.
+  - You MAY NOT remove or alter these copyright and license notices.
+
+================================================================================
+3. TRADEMARK AND NAMING
+================================================================================
+
+"Ravix" and the Ravix logo are used by the author to identify this project.
+The AGPL-3.0 grants rights in the software; it does not grant rights in the
+name or the logo.
+
+If you distribute a modified version, please:
+
+  - do NOT present it as "Ravix" or use the Ravix logo in a way that suggests it
+    is the official project or endorsed by the author;
+  - DO state plainly that it is based on Ravix, and link back to
+    https://github.com/tnAnGel/Ravix.
+
+Unmodified redistribution under the name "Ravix" is fine, as is factual use of
+the name ("a fork of Ravix", "compatible with Ravix").
+
+================================================================================
+4. COMMERCIAL LICENSING
+================================================================================
+
+The author holds the copyright to the original work and can therefore license
+it on terms other than the AGPL-3.0.
+
+If the AGPL's network-use requirement (section 13) does not fit your case — for
+example, you want to build Ravix into a closed-source hosted product — a
+separate commercial license can be negotiated. Contact the author directly:
+
+    Email     darkzeit00@gmail.com
+    Telegram  https://t.me/Namnes
+
+No commercial license is granted implicitly. Absent a signed agreement, the
+AGPL-3.0 governs all use.
+
+================================================================================
+5. THIRD-PARTY SOFTWARE
+================================================================================
+
+Ravix installs, configures and supervises third-party software that it does not
+include and does not relicense. Each remains under its own license and its own
+copyright holders:
+
+  Postfix (IBM Public License / EPL-2.0), Dovecot (LGPL-2.1 / MIT),
+  Rspamd (Apache-2.0), OpenDKIM (BSD-3-Clause / Sendmail Open Source License),
+  Redis (RSALv2 / SSPLv1), Nginx (BSD-2-Clause), Certbot (Apache-2.0),
+  PostgreSQL (PostgreSQL License), Radicale (GPL-3.0), fail2ban (GPL-2.0).
+
+Ravix's own build depends on Quarkus (Apache-2.0), Hibernate (LGPL-2.1 /
+Apache-2.0), Flyway (Apache-2.0), React (MIT), Vite (MIT), Tailwind CSS (MIT),
+Radix UI (MIT), Recharts (MIT), i18next (MIT), DOMPurify (Apache-2.0 / MPL-2.0)
+and other packages listed in package.json and backend/pom.xml, each under its
+own license.
+
+================================================================================
+6. NO WARRANTY — READ THIS ONE
+================================================================================
+
+Ravix 0.1 is a PRE-RELEASE. It runs with root privileges on a mail host and
+rewrites the configuration of Postfix, Dovecot, Rspamd, OpenDKIM and Nginx.
+
+There is NO WARRANTY of any kind. You are responsible for your own mail server,
+your own data, your own backups and your own deliverability. Known weaknesses
+are documented in SECURITY.md — read it before deploying.

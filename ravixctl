@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# ravixctl — command-line control for a Ravix installation.
+#
+set -euo pipefail
+
+ENV_FILE="${RAVIX_ENV_FILE:-/etc/ravix/ravix.env}"
+APP_URL="http://127.0.0.1:${RAVIX_HTTP_PORT:-8080}"
+SRC_DIR="${RAVIX_SRC_DIR:-/opt/ravix/src}"
+
+c_red()  { printf '\033[1;31m%s\033[0m' "$*"; }
+c_grn()  { printf '\033[1;32m%s\033[0m' "$*"; }
+c_dim()  { printf '\033[2m%s\033[0m' "$*"; }
+die()    { printf '%s %s\n' "$(c_red ✗)" "$*" >&2; exit 1; }
+
+load_env() {
+  [ -f "$ENV_FILE" ] || die "Env file not found: $ENV_FILE (is Ravix installed?)"
+  # shellcheck disable=SC1090
+  set -a; . "$ENV_FILE"; set +a
+  APP_URL="http://127.0.0.1:${RAVIX_HTTP_PORT:-8080}"
+}
+
+# --- API helpers -----------------------------------------------------------
+_token() {
+  load_env
+  curl -fsS -X POST "$APP_URL/api/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d "{\"username\":\"${RAVIX_ADMIN_EMAIL}\",\"password\":\"${RAVIX_ADMIN_PASSWORD}\"}" \
+    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p'
+}
+
+_api() { # method path
+  local method="$1" path="$2" token
+  token="$(_token)"
+  [ -n "$token" ] || die "Could not authenticate (check RAVIX_ADMIN_* in $ENV_FILE)."
+  curl -fsS -X "$method" "$APP_URL$path" -H "Authorization: Bearer $token"
+}
+
+# --- DB helper (parses RAVIX_DB_URL) ---------------------------------------
+_psql() {
+  load_env
+  local url="${RAVIX_DB_URL#jdbc:postgresql://}"
+  local hostport="${url%%/*}" db="${url##*/}"
+  local host="${hostport%%:*}" port="${hostport##*:}"
+  [ "$host" = "$port" ] && port=5432
+  PGPASSWORD="${RAVIX_DB_PASSWORD:-}" psql -h "$host" -p "$port" -U "${RAVIX_DB_USER:-ravix}" -d "$db" "$@"
+}
+
+# --- Commands --------------------------------------------------------------
+cmd_status()   { systemctl status ravix --no-pager; }
+cmd_start()    { systemctl start ravix && c_grn started; echo; }
+cmd_stop()     { systemctl stop ravix && echo stopped; }
+cmd_restart()  { systemctl restart ravix && c_grn restarted; echo; }
+cmd_enable()   { systemctl enable ravix; }
+cmd_disable()  { systemctl disable ravix; }
+
+cmd_logs() {
+  if [ "${1:-}" = "-f" ]; then journalctl -u ravix -f; else journalctl -u ravix -n "${1:-200}" --no-pager; fi
+}
+
+cmd_version() {
+  load_env
+  curl -fsS "$APP_URL/api/auth/status" 2>/dev/null \
+    | sed -n 's/.*"version":"\([^"]*\)".*/Ravix v\1/p' || echo "Ravix (offline)"
+}
+
+cmd_apply() {
+  echo "Applying configuration to the mail stack…"
+  _api POST /api/platform/apply
+  echo
+}
+
+cmd_backup() {
+  echo "Creating backup…"
+  _api POST /api/backups >/dev/null && c_grn "backup created"; echo
+}
+
+cmd_recheck() {
+  echo "Rechecking DNS for all domains…"
+  local ids
+  ids="$(_api GET /api/domains | grep -o '"id":"[^"]*"' | sed 's/"id":"//;s/"//')"
+  for id in $ids; do _api POST "/api/domains/$id/recheck" >/dev/null && echo "  $(c_grn ✓) $id"; done
+}
+
+cmd_doctor() {
+  load_env
+  echo "Ravix health check"
+  systemctl is-active --quiet ravix && echo "  $(c_grn ✓) service active" || echo "  $(c_red ✗) service not active"
+  curl -fsS "$APP_URL/api/auth/status" >/dev/null 2>&1 \
+    && echo "  $(c_grn ✓) API responding on ${APP_URL}" || echo "  $(c_red ✗) API not responding"
+  _psql -tAc "SELECT 1" >/dev/null 2>&1 \
+    && echo "  $(c_grn ✓) database reachable" || echo "  $(c_red ✗) database unreachable"
+  systemctl is-active --quiet nginx && echo "  $(c_grn ✓) nginx active" || echo "  $(c_dim '·') nginx not active"
+}
+
+cmd_update() {
+  [ -d "$SRC_DIR/.git" ] || die "Source checkout not found at $SRC_DIR."
+  # set -e (top of script) makes any failing step abort BEFORE we deploy or
+  # restart — so a broken build never replaces a working install.
+  echo "Updating Ravix from $SRC_DIR…"
+  ( cd "$SRC_DIR" && git pull --ff-only )
+
+  # Keep ravixctl itself current. Atomic replace (mv) so overwriting it does not
+  # corrupt this still-running copy; the new logic takes effect next invocation.
+  if [ -f "$SRC_DIR/ravixctl" ] && ! cmp -s "$SRC_DIR/ravixctl" /usr/local/bin/ravixctl 2>/dev/null; then
+    install -m 0755 "$SRC_DIR/ravixctl" /usr/local/bin/.ravixctl.new \
+      && mv -f /usr/local/bin/.ravixctl.new /usr/local/bin/ravixctl \
+      && printf '  %s ravixctl self-updated (new logic applies next run)\n' "$(c_grn ✓)" || true
+  fi
+
+  printf '%s Building backend (Quarkus / Java)…\n' "$(c_dim ▸)"
+  # -Dnet.bytebuddy.experimental=true: required so the build keeps working on
+  # newer JDKs (ByteBuddy refuses unknown major versions otherwise).
+  ( cd "$SRC_DIR/backend" && mvn -q -DskipTests -Dnet.bytebuddy.experimental=true clean package )
+  [ -f "$SRC_DIR/backend/target/quarkus-app/quarkus-run.jar" ] \
+    || die "Backend build produced no quarkus-run.jar — aborting (install left untouched)."
+  printf '  %s backend built\n' "$(c_grn ✓)"
+
+  printf '%s Building frontend (Vite)…\n' "$(c_dim ▸)"
+  ( cd "$SRC_DIR" && npm ci --no-audit --no-fund --silent && npm run build --silent )
+  [ -f "$SRC_DIR/dist/index.html" ] \
+    || die "Frontend build produced no dist/index.html — aborting."
+  printf '  %s frontend built\n' "$(c_grn ✓)"
+
+  printf '%s Deploying backend + frontend…\n' "$(c_dim ▸)"
+  systemctl stop ravix || true
+  # Clean replace (not a merge) so stale jars/assets never linger.
+  rm -rf /opt/ravix/quarkus-app
+  cp -r "$SRC_DIR/backend/target/quarkus-app" /opt/ravix/quarkus-app
+  rm -rf /var/www/ravix/* && cp -r "$SRC_DIR/dist/." /var/www/ravix/
+  systemctl start ravix
+
+  c_grn "✓ updated — backend + frontend rebuilt, deployed and restarted"; echo
+  echo "  $(c_dim "$(git -C "$SRC_DIR" log --oneline -1)")"
+}
+
+cmd_reset_admin() { # [email] [password]
+  load_env
+  local email="${1:-$RAVIX_ADMIN_EMAIL}" pass="${2:-}"
+  [ -n "$pass" ] || die "Usage: ravixctl reset-admin <email> <password>"
+  sed -i "s|^RAVIX_ADMIN_EMAIL=.*|RAVIX_ADMIN_EMAIL=${email}|" "$ENV_FILE"
+  sed -i "s|^RAVIX_ADMIN_PASSWORD=.*|RAVIX_ADMIN_PASSWORD=${pass}|" "$ENV_FILE"
+  _psql -c "DELETE FROM ravix.admin_user;" >/dev/null
+  systemctl restart ravix
+  c_grn "admin reset — login as ${email}"; echo
+}
+
+usage() {
+  cat <<EOF
+ravixctl — control a Ravix installation
+
+  Service:   status | start | stop | restart | enable | disable
+             logs [-f|<N>]
+
+  App:       version            show the running version
+             apply              render & apply mail-stack config
+             recheck            recheck DNS for all domains
+             backup             create a backup
+             doctor             run health checks
+             update             git pull, rebuild and restart
+             reset-admin <email> <password>
+
+EOF
+}
+
+case "${1:-help}" in
+  status) cmd_status ;;
+  start) cmd_start ;;
+  stop) cmd_stop ;;
+  restart) cmd_restart ;;
+  enable) cmd_enable ;;
+  disable) cmd_disable ;;
+  logs) shift; cmd_logs "$@" ;;
+  version) cmd_version ;;
+  apply) cmd_apply ;;
+  recheck) cmd_recheck ;;
+  backup) cmd_backup ;;
+  doctor) cmd_doctor ;;
+  update) cmd_update ;;
+  reset-admin) shift; cmd_reset_admin "$@" ;;
+  help|-h|--help) usage ;;
+  *) usage; exit 1 ;;
+esac

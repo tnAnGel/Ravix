@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in Ravix does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not use this form for security
+        vulnerabilities** — follow [SECURITY.md](https://github.com/tnAnGel/Ravix/blob/main/SECURITY.md)
+        instead so the issue stays private until a fix ships.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        1. Went to Domains → example.com → Recheck
+        2. Expected the SPF row to turn green
+        3. Got "lookup failed" with no further detail
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Ravix version
+      description: Output of `ravixctl version`, or the commit you built from.
+      placeholder: "0.1-pre / 152c344"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-mode
+    attributes:
+      label: How was it installed
+      options:
+        - install.sh (pre-built release)
+        - install-from-source.sh (source build)
+        - Development (mvn quarkus:dev + npm run dev)
+        - Other / manual
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Host
+      description: Distribution, architecture and Java version.
+      placeholder: "Debian 12, arm64, Temurin 21.0.5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Diagnostics
+      description: |
+        Output of `sudo ravixctl doctor` and any relevant lines from
+        `sudo ravixctl logs 200`. Scrub domains, IPs and API keys first —
+        this is a public issue.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: I removed API keys, passwords and private domains from the output above.
+          required: true
